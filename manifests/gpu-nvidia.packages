@@ -1,0 +1,4 @@
+# NVIDIA — optional; open kernel modules + userspace. Requires matching kernel.
+# On CachyOS prefer chwd profiles / linux-cachyos-nvidia-open over hand-rolling.
+nvidia-open-dkms
+nvidia-utils

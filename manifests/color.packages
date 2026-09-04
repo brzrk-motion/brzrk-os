@@ -1,0 +1,8 @@
+# Color management foundations (ACES via OpenColorIO; no proprietary LUTs)
+opencolorio
+openimageio
+openexr
+colord
+gnome-color-manager
+argyllcms
+displaycal

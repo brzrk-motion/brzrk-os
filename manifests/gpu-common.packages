@@ -1,0 +1,6 @@
+# Shared GPU/media stack. mesa provides libva-mesa-driver (replaced upstream).
+# VA-API CLI: libva-utils (media.packages). VDPAU probe: vdpauinfo.
+mesa
+vulkan-mesa-layers
+ocl-icd
+vdpauinfo

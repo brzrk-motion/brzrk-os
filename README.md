@@ -14,7 +14,30 @@ The workstation should not require hours of manual setup for codecs, GPU acceler
 
 ## Status
 
-Initial build mission. See [`docs/INITIAL-BUILD-MISSION.md`](docs/INITIAL-BUILD-MISSION.md).
+**Initial overlay foundation (not an installable image yet).**
+
+Architecture: thin post-install layer on CachyOS/Arch + GNOME. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/ROADMAP-BOOTABLE.md`](docs/ROADMAP-BOOTABLE.md).
+
+## Quick start (checks)
+
+On Arch or CachyOS with `pacman` and `dconf`:
+
+```bash
+./scripts/brzrk-check
+```
+
+Dry-run the apply plan (no root, no installs):
+
+```bash
+./scripts/brzrk-apply
+./scripts/brzrk-apply --packages --gpu amd --skel
+```
+
+Apply on a real GNOME workstation (root):
+
+```bash
+sudo ./scripts/brzrk-apply --apply --packages --gpu amd --skel
+```
 
 ## Principles
 
@@ -26,6 +49,17 @@ Initial build mission. See [`docs/INITIAL-BUILD-MISSION.md`](docs/INITIAL-BUILD-
 - Automate setup; explain what automation changes.
 - Prefer upstream packages and documented integrations over fragile hacks.
 
+## Documentation
+
+| Doc | Topic |
+| --- | --- |
+| [`docs/INITIAL-BUILD-MISSION.md`](docs/INITIAL-BUILD-MISSION.md) | Mission brief |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Layering and layout |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Decisions / assumptions |
+| [`docs/PACKAGE-POLICY.md`](docs/PACKAGE-POLICY.md) | What we ship and why |
+| [`docs/HARDWARE-LICENSING.md`](docs/HARDWARE-LICENSING.md) | GPU / license boundaries |
+| [`docs/ROADMAP-BOOTABLE.md`](docs/ROADMAP-BOOTABLE.md) | Path to a tested image |
+
 ## License
 
-To be decided during the initial build mission.
+MIT — see [`LICENSE`](LICENSE). Upstream packages keep their own licenses.

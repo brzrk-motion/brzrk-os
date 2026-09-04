@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+# Validate BRZRK OS manifests against pacman and check repo invariants.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+MANIFEST_DIR="${ROOT}/manifests"
+
+# Arch-verified manifests (must resolve in pacman sync DBs).
+ARCH_MANIFESTS=(
+  base.packages
+  media.packages
+  color.packages
+  creative.packages
+  fonts.packages
+  gpu-common.packages
+  gpu-amd.packages
+  gpu-intel.packages
+  gpu-nvidia.packages
+)
+
+CACHYOS_MANIFEST="cachyos.packages"
+REQUIRE_CACHYOS="${BRZRK_REQUIRE_CACHYOS:-0}"
+
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+info() { printf '==> %s\n' "$*"; }
+ok() { printf 'OK  %s\n' "$*"; }
+warn() { printf 'WARN %s\n' "$*" >&2; }
+
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
+}
+
+read_packages() {
+  local file="$1"
+  [[ -f "$file" ]] || die "missing manifest: $file"
+  # shellcheck disable=SC2013
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%%#*}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "$line" ]] && continue
+    printf '%s\n' "$line"
+  done <"$file"
+}
+
+package_resolvable() {
+  local pkg="$1"
+  pacman -Si -- "$pkg" >/dev/null 2>&1
+}
+
+validate_arch_manifest() {
+  local name="$1"
+  local path="${MANIFEST_DIR}/${name}"
+  local pkg count=0
+  info "checking ${name}"
+  while IFS= read -r pkg; do
+    if ! package_resolvable "$pkg"; then
+      die "package not found in pacman sync DBs: ${pkg} (from ${name})"
+    fi
+    count=$((count + 1))
+  done < <(read_packages "$path")
+  [[ "$count" -gt 0 ]] || die "manifest is empty: ${name}"
+  ok "${name} (${count} packages)"
+}
+
+validate_cachyos_manifest() {
+  local path="${MANIFEST_DIR}/${CACHYOS_MANIFEST}"
+  local pkg missing=0 found=0
+  info "checking ${CACHYOS_MANIFEST} (optional unless BRZRK_REQUIRE_CACHYOS=1)"
+  while IFS= read -r pkg; do
+    if package_resolvable "$pkg"; then
+      found=$((found + 1))
+    else
+      missing=$((missing + 1))
+      warn "CachyOS package not in local repos: ${pkg}"
+    fi
+  done < <(read_packages "$path")
+  if [[ "$REQUIRE_CACHYOS" == "1" && "$missing" -gt 0 ]]; then
+    die "BRZRK_REQUIRE_CACHYOS=1 but ${missing} CachyOS package(s) missing"
+  fi
+  ok "${CACHYOS_MANIFEST} (found=${found} missing=${missing})"
+}
+
+check_layout() {
+  local required=(
+    README.md
+    AGENTS.md
+    LICENSE
+    docs/INITIAL-BUILD-MISSION.md
+    docs/ARCHITECTURE.md
+    docs/DECISIONS.md
+    docs/PACKAGE-POLICY.md
+    docs/HARDWARE-LICENSING.md
+    docs/ROADMAP-BOOTABLE.md
+    config/dconf/00-brzrk.conf
+    config/dconf/profile-user
+    config/skel/README.md
+    scripts/brzrk-validate
+    scripts/brzrk-apply
+    scripts/brzrk-check
+  )
+  local f
+  info "checking repository layout"
+  for f in "${required[@]}"; do
+    [[ -e "${ROOT}/${f}" ]] || die "missing required path: ${f}"
+  done
+  ok "layout"
+}
+
+check_dconf_syntax() {
+  local conf="${ROOT}/config/dconf/00-brzrk.conf"
+  local tmp
+  info "checking dconf overlay syntax"
+  need_cmd dconf
+  tmp="$(mktemp -d)"
+  # dconf compile expects basename keys under a db dir
+  cp "$conf" "${tmp}/00-brzrk"
+  if ! dconf compile "${tmp}/compiled" "$tmp" 2>/tmp/brzrk-dconf-err; then
+    cat /tmp/brzrk-dconf-err >&2 || true
+    rm -rf "$tmp"
+    die "dconf compile failed for config/dconf/00-brzrk.conf"
+  fi
+  rm -rf "$tmp"
+  ok "dconf syntax"
+}
+
+check_no_secrets() {
+  info "scanning for obvious secrets patterns"
+  if grep -RInE \
+    --exclude-dir=.git \
+    --exclude-dir=agent-tools \
+    -e 'BEGIN (RSA |OPENSSH |PGP )?PRIVATE KEY' \
+    -e 'AKIA[0-9A-Z]{16}' \
+    -e 'api[_-]?key[[:space:]]*=[[:space:]]*['\''\"][^'\''\"]{8,}' \
+    "$ROOT" >/tmp/brzrk-secret-hits 2>/dev/null; then
+    cat /tmp/brzrk-secret-hits >&2
+    die "possible secrets found in repository"
+  fi
+  ok "no obvious secrets"
+}
+
+main() {
+  need_cmd pacman
+  need_cmd grep
+  check_layout
+  check_dconf_syntax
+  check_no_secrets
+  local m
+  for m in "${ARCH_MANIFESTS[@]}"; do
+    validate_arch_manifest "$m"
+  done
+  validate_cachyos_manifest
+  info "validation passed"
+}
+
+main "$@"

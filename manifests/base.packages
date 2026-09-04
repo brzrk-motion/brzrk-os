@@ -1,0 +1,26 @@
+# BRZRK OS — base GNOME workstation (Arch/extra + core)
+# Verified against Arch pacman on 2026-09-04. Groups expanded to concrete pkgs.
+gdm
+gnome-shell
+gnome-session
+gnome-settings-daemon
+gnome-control-center
+gnome-keyring
+nautilus
+ptyxis
+gnome-text-editor
+gnome-software
+flatpak
+xdg-desktop-portal
+xdg-desktop-portal-gnome
+xdg-user-dirs
+xdg-utils
+networkmanager
+pipewire
+pipewire-alsa
+pipewire-pulse
+pipewire-jack
+wireplumber
+power-profiles-daemon
+dconf
+gnome-tweaks

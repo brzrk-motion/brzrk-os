@@ -1,0 +1,3 @@
+# AMD — install when AMD GPU present (chwd on CachyOS; manual on plain Arch)
+vulkan-radeon
+opencl-mesa

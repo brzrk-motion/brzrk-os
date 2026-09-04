@@ -1,0 +1,7 @@
+# CachyOS-only packages. Not present in stock Arch repos.
+# Validation treats these as optional unless BRZRK_REQUIRE_CACHYOS=1.
+linux-cachyos
+cachyos-settings
+cachyos-gnome-settings
+chwd
+paru

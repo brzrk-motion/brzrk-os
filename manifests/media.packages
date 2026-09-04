@@ -1,0 +1,11 @@
+# Codecs, containers, and media tooling (FOSS only)
+ffmpeg
+gst-libav
+gst-plugins-base
+gst-plugins-good
+gst-plugins-bad
+gst-plugins-ugly
+ffmpegthumbnailer
+mpv
+libva
+libva-utils

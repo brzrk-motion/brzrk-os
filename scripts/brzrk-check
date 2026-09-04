@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Canonical local checks for BRZRK OS (no hardware / proprietary / ISO build).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+info() { printf '==> %s\n' "$*"; }
+
+info "running brzrk-validate"
+"${ROOT}/scripts/brzrk-validate"
+
+info "running tests/test_layout.sh"
+"${ROOT}/tests/test_layout.sh"
+
+info "running tests/test_manifests.sh"
+"${ROOT}/tests/test_manifests.sh"
+
+info "running tests/test_apply_dry_run.sh"
+"${ROOT}/tests/test_apply_dry_run.sh"
+
+info "all canonical checks passed"

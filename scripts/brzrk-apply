@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+# Apply BRZRK OS overlays to the current system (idempotent; dry-run by default).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DO_APPLY=0
+INSTALL_PACKAGES=0
+WITH_GPU=""
+CREATE_SKEL=0
+
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+info() { printf '==> %s\n' "$*"; }
+ok() { printf 'OK  %s\n' "$*"; }
+
+usage() {
+  cat <<'EOF'
+Usage: brzrk-apply [--apply] [--packages] [--gpu amd|intel|nvidia] [--skel]
+
+  Default is dry-run: print planned actions without changing the system.
+
+  --apply       Perform changes (needs root for system dconf / pacman)
+  --packages    Also install Arch-verified package manifests via pacman
+  --gpu NAME    Include gpu-NAME.packages plus gpu-common.packages
+  --skel        Create recommended ~/Projects and ~/Media directories
+
+Does not download proprietary software. Does not claim to build an ISO.
+EOF
+}
+
+read_packages() {
+  local file="$1"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%%#*}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "$line" ]] && continue
+    printf '%s\n' "$line"
+  done <"$file"
+}
+
+collect_packages() {
+  local files=(
+    manifests/base.packages
+    manifests/media.packages
+    manifests/color.packages
+    manifests/creative.packages
+    manifests/fonts.packages
+  )
+  if [[ -n "$WITH_GPU" ]]; then
+    files+=(manifests/gpu-common.packages "manifests/gpu-${WITH_GPU}.packages")
+  fi
+  local f
+  for f in "${files[@]}"; do
+    [[ -f "${ROOT}/${f}" ]] || die "missing ${f}"
+    read_packages "${ROOT}/${f}"
+  done | sort -u
+}
+
+plan_dconf() {
+  info "dconf system overlay -> /etc/dconf/db/local.d/00-brzrk"
+  info "dconf profile       -> /etc/dconf/profile/user"
+  info "then: dconf update"
+}
+
+apply_dconf() {
+  [[ "$(id -u)" -eq 0 ]] || die "--apply for system dconf requires root"
+  install -d /etc/dconf/db/local.d
+  install -d /etc/dconf/profile
+  install -m 0644 "${ROOT}/config/dconf/00-brzrk.conf" /etc/dconf/db/local.d/00-brzrk
+  install -m 0644 "${ROOT}/config/dconf/profile-user" /etc/dconf/profile/user
+  dconf update
+  ok "dconf applied"
+}
+
+plan_packages() {
+  local pkg
+  info "packages that would be installed:"
+  while IFS= read -r pkg; do
+    printf '  %s\n' "$pkg"
+  done < <(collect_packages)
+}
+
+apply_packages() {
+  [[ "$(id -u)" -eq 0 ]] || die "--packages requires root"
+  mapfile -t pkgs < <(collect_packages)
+  pacman -S --needed --noconfirm -- "${pkgs[@]}"
+  ok "packages installed (${#pkgs[@]})"
+}
+
+plan_skel() {
+  local home="${SUDO_USER:+$(getent passwd "$SUDO_USER" | cut -d: -f6)}"
+  home="${home:-$HOME}"
+  info "skel dirs under ${home}: Projects/_inbox Media/{Cache,Exports,LUTs,OCIO}"
+}
+
+apply_skel() {
+  local user="${SUDO_USER:-$USER}"
+  local home
+  home="$(getent passwd "$user" | cut -d: -f6)"
+  [[ -n "$home" && -d "$home" ]] || die "cannot resolve home for ${user}"
+  local dirs=(
+    "${home}/Projects/_inbox"
+    "${home}/Media/Cache"
+    "${home}/Media/Exports"
+    "${home}/Media/LUTs"
+    "${home}/Media/OCIO"
+  )
+  local d
+  for d in "${dirs[@]}"; do
+    install -d -m 700 -o "$user" -g "$user" "$d"
+  done
+  ok "skel directories created for ${user}"
+}
+
+main() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h|--help) usage; exit 0 ;;
+      --apply) DO_APPLY=1 ;;
+      --packages) INSTALL_PACKAGES=1 ;;
+      --gpu)
+        shift
+        [[ $# -gt 0 ]] || die "--gpu requires amd|intel|nvidia"
+        case "$1" in
+          amd|intel|nvidia) WITH_GPU="$1" ;;
+          *) die "unknown gpu: $1" ;;
+        esac
+        ;;
+      --skel) CREATE_SKEL=1 ;;
+      *) die "unknown argument: $1" ;;
+    esac
+    shift
+  done
+
+  if [[ "$DO_APPLY" -eq 0 ]]; then
+    info "dry-run (pass --apply to make changes)"
+    plan_dconf
+    if [[ "$INSTALL_PACKAGES" -eq 1 ]]; then
+      plan_packages
+    else
+      info "skipping package install plan (pass --packages to include)"
+    fi
+    if [[ "$CREATE_SKEL" -eq 1 ]]; then
+      plan_skel
+    fi
+    ok "dry-run complete"
+    exit 0
+  fi
+
+  apply_dconf
+  if [[ "$INSTALL_PACKAGES" -eq 1 ]]; then
+    apply_packages
+  fi
+  if [[ "$CREATE_SKEL" -eq 1 ]]; then
+    apply_skel
+  fi
+  ok "apply complete"
+}
+
+main "$@"
