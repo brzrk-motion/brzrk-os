@@ -25,6 +25,12 @@ assert_file "${ROOT}/config/shell/brzrk-starship.sh"
 assert_exec "${ROOT}/scripts/brzrk-validate"
 assert_exec "${ROOT}/scripts/brzrk-apply"
 assert_exec "${ROOT}/scripts/brzrk-check"
+assert_exec "${ROOT}/scripts/brzrk-iso"
+assert_file "${ROOT}/iso/profiledef.sh"
+assert_file "${ROOT}/iso/live.packages"
+assert_file "${ROOT}/iso/airootfs/etc/gdm/custom.conf"
+assert_file "${ROOT}/iso/airootfs/etc/os-release"
+assert_exec "${ROOT}/iso/airootfs/root/customize_airootfs.sh"
 
 # No proprietary installer blobs
 if find "${ROOT}" -type f \( -name '*.run' -o -name '*.exe' -o -name '*.dmg' \) | grep -q .; then

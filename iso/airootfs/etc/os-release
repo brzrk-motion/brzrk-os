@@ -1,0 +1,9 @@
+NAME="BRZRK OS"
+PRETTY_NAME="BRZRK OS"
+ID=brzrk
+ID_LIKE=arch
+BUILD_ID=rolling
+ANSI_COLOR="38;2;187;154;247"
+HOME_URL="https://github.com/brzrk-motion/brzrk-os"
+DOCUMENTATION_URL="https://github.com/brzrk-motion/brzrk-os/tree/main/docs"
+LOGO=brzrk

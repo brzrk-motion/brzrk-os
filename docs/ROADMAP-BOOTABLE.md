@@ -1,6 +1,7 @@
 # Path to a bootable / testable artifact
 
-This repository does **not** yet produce an ISO. Use this ladder; do not skip evidence.
+This repository now contains a first ISO build path. It is a build recipe, not
+yet a release artifact; do not skip the boot evidence below.
 
 ## Already runnable (local)
 
@@ -25,15 +26,15 @@ Validates manifests against pacman, dconf compile, layout, dry-run apply. No GPU
 - Container/VM job on Arch: install pacman sync DBs, run `brzrk-check` (already possible on Arch hosts).
 - Optional CachyOS job with `BRZRK_REQUIRE_CACHYOS=1` once CachyOS repos are configured in CI.
 
-## Finally: branded image (only with proof)
+## Branded test image
 
 Upstream reference: [CachyOS-Live-ISO](https://github.com/CachyOS/CachyOS-Live-ISO) (`buildiso.sh -p desktop`, archiso profiles).
 
-Likely BRZRK approach (not implemented yet):
+Implemented approach:
 
-1. Add a GNOME-oriented package list / profile overlay (stock desktop list is Plasma-centric).
-2. Inject BRZRK manifests + `/etc/dconf/db/local.d/00-brzrk`.
-3. Build ISO in CI or a clean builder VM; boot under QEMU; run automated smoke tests (`testiso.sh` patterns upstream).
-4. Only then publish checksums and call it a BRZRK image.
+1. Run `./scripts/brzrk-iso --check` to validate the checked-in profile.
+2. Run `./scripts/brzrk-iso` on a clean CachyOS/Arch-like builder with the documented prerequisites.
+3. Boot the resulting ISO under QEMU; confirm GDM autologin, GNOME defaults, installer launch, and the package inventory.
+4. Record package versions, builder commit, VM result, and checksum in `docs/smoke/` before publishing.
 
 **Do not advertise an installable BRZRK OS ISO until step 3 has a green, recorded boot test.**

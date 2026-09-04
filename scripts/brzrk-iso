@@ -1,0 +1,196 @@
+#!/usr/bin/env bash
+# Build the BRZRK OS ISO from a pinned CachyOS Live ISO checkout.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+UPSTREAM_URL="https://github.com/CachyOS/CachyOS-Live-ISO.git"
+UPSTREAM_REF="${BRZRK_CACHYOS_LIVE_ISO_REF:-4937780541814b4b0ec7c212c00fe06299f799b6}"
+SOURCE_DIR="${BRZRK_CACHYOS_LIVE_ISO_SOURCE:-${ROOT}/.cache/cachyos-live-iso-${UPSTREAM_REF}}"
+WORKDIR=""
+
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+info() { printf '==> %s\n' "$*"; }
+cleanup_workdir() {
+  [[ -z "$WORKDIR" ]] && return
+  if [[ "$(id -u)" -eq 0 ]]; then
+    rm -rf "$WORKDIR"
+  else
+    sudo rm -rf "$WORKDIR"
+  fi
+}
+
+usage() {
+  cat <<'EOF'
+Usage: brzrk-iso [--check]
+
+  --check   Validate the checked-in ISO profile without network, root, or a build.
+
+Build requirements: CachyOS or Arch-like host with git, sudo, archiso,
+mkinitcpio-archiso, squashfs-tools, grub, and network access.
+The resulting ISO and package list are written under out/desktop/.
+EOF
+}
+
+read_packages() {
+  local file="$1" line
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%%#*}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "$line" ]] && continue
+    printf '%s\n' "$line"
+  done <"$file"
+}
+
+check_profile() {
+  local required=(
+    iso/profiledef.sh
+    iso/live.packages
+    iso/airootfs/etc/gdm/custom.conf
+    iso/airootfs/etc/os-release
+    iso/airootfs/root/customize_airootfs.sh
+  )
+  local file
+  for file in "${required[@]}"; do
+    [[ -f "${ROOT}/${file}" ]] || die "missing ${file}"
+  done
+  [[ -x "${ROOT}/iso/airootfs/root/customize_airootfs.sh" ]] ||
+    die "customize_airootfs.sh is not executable"
+  grep -Fq 'iso_name="brzrk"' "${ROOT}/iso/profiledef.sh" ||
+    die "profile is not branded BRZRK"
+  grep -Fq 'gdm' "${ROOT}/manifests/base.packages" || die "profile has no GDM"
+  grep -Fq 'gnome-shell' "${ROOT}/manifests/base.packages" ||
+    die "base manifest has no GNOME Shell"
+  if grep -E '(^|[-])(kde|plasma)' "${ROOT}/iso/live.packages" >/dev/null; then
+    die "live package set contains KDE/Plasma packages"
+  fi
+  local count
+  count="$(read_packages "${ROOT}/iso/live.packages" | sort -u | wc -l)"
+  [[ "$count" -gt 0 ]] || die "live package set is empty"
+  [[ "$count" -eq "$(read_packages "${ROOT}/iso/live.packages" | wc -l)" ]] ||
+    die "duplicate package in iso/live.packages"
+  info "ISO profile checks passed (${count} live packages)"
+}
+
+check_build_tools() {
+  local command
+  for command in git sudo mkarchiso mksquashfs grub-mkstandalone; do
+    command -v "$command" >/dev/null 2>&1 ||
+      die "required build command not found: ${command}"
+  done
+}
+
+ensure_upstream() {
+  [[ "$UPSTREAM_REF" =~ ^[0-9a-f]{40}$ ]] ||
+    die "BRZRK_CACHYOS_LIVE_ISO_REF must be a 40-character commit"
+  if [[ ! -d "${SOURCE_DIR}/.git" ]]; then
+    install -d "$(dirname "${SOURCE_DIR}")"
+    info "cloning CachyOS Live ISO at ${UPSTREAM_REF}"
+    git clone --filter=blob:none --no-checkout "$UPSTREAM_URL" "$SOURCE_DIR"
+    git -C "$SOURCE_DIR" fetch --depth=1 origin "$UPSTREAM_REF"
+    git -C "$SOURCE_DIR" checkout --detach "$UPSTREAM_REF"
+  fi
+  [[ "$(git -C "$SOURCE_DIR" rev-parse HEAD)" == "$UPSTREAM_REF" ]] ||
+    die "upstream checkout is not pinned to ${UPSTREAM_REF}: ${SOURCE_DIR}"
+}
+
+collect_packages() {
+  local files=(
+    manifests/base.packages
+    manifests/media.packages
+    manifests/color.packages
+    manifests/creative.packages
+    manifests/developer.packages
+    manifests/fonts.packages
+    manifests/gpu-common.packages
+    iso/live.packages
+  )
+  local file
+  for file in "${files[@]}"; do
+    read_packages "${ROOT}/${file}"
+  done | sort -u
+}
+
+patch_upstream_builder() {
+  local util="${1}/util-iso.sh"
+  grep -Fq 'ln -sf /usr/lib/systemd/system/plasmalogin.service' "$util" ||
+    die "unexpected CachyOS builder: GDM patch target not found"
+  grep -Fq 'vars+=("cachyos")' "$util" ||
+    die "unexpected CachyOS builder: ISO name patch target not found"
+  grep -Fq "\$_profile/cachyos-" "$util" ||
+    die "unexpected CachyOS builder: output patch target not found"
+  sed -i \
+    -e 's|/usr/lib/systemd/system/plasmalogin.service|/usr/lib/systemd/system/gdm.service|' \
+    -e 's|vars+=("cachyos")|vars+=("brzrk")|' \
+    -e "s|\$_profile/cachyos-|\$_profile/brzrk-|" \
+    "$util"
+}
+
+prepare_profile() {
+  local checkout="$1"
+  local profile="${checkout}/archiso"
+  cp "${ROOT}/iso/profiledef.sh" "${profile}/profiledef.sh"
+  collect_packages >"${profile}/packages_desktop.x86_64"
+  cp -a "${ROOT}/iso/airootfs/." "${profile}/airootfs/"
+
+  # The upstream profile contains Plasma-only login and skeleton leftovers.
+  rm -rf \
+    "${profile}/airootfs/etc/plasmalogin.conf" \
+    "${profile}/airootfs/etc/plasmalogin.conf.d" \
+    "${profile}/airootfs/etc/skel/.config/plasma-welcomerc" \
+    "${profile}/airootfs/etc/skel/.config/powerdevilrc" \
+    "${profile}/airootfs/etc/skel/.config/powermanagementprofilesrc" \
+    "${profile}/airootfs/etc/skel/.config/kwalletrc" \
+    "${profile}/airootfs/etc/skel/.config/kscreenlockerrc" \
+    "${profile}/airootfs/etc/skel/.config/kded5rc" \
+    "${profile}/airootfs/etc/skel/.config/systemd/user/plasma-login-kwin_wayland.service.d"
+
+  install -D -m 0644 "${ROOT}/config/dconf/00-brzrk.conf" \
+    "${profile}/airootfs/etc/dconf/db/local.d/00-brzrk"
+  install -D -m 0644 "${ROOT}/config/dconf/profile-user" \
+    "${profile}/airootfs/etc/dconf/profile/user"
+  install -D -m 0644 "${ROOT}/config/ghostty/config" \
+    "${profile}/airootfs/etc/skel/.config/ghostty/config"
+  install -D -m 0644 "${ROOT}/config/starship/starship.toml" \
+    "${profile}/airootfs/etc/skel/.config/starship.toml"
+  install -D -m 0644 "${ROOT}/config/shell/brzrk-starship.sh" \
+    "${profile}/airootfs/etc/profile.d/brzrk-starship.sh"
+  patch_upstream_builder "$checkout"
+}
+
+main() {
+  case "${1:-}" in
+    --check) check_profile; exit 0 ;;
+    --help|-h) usage; exit 0 ;;
+    "") ;;
+    *) usage >&2; exit 2 ;;
+  esac
+
+  check_profile
+  check_build_tools
+  ensure_upstream
+
+  local checkout
+  WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/brzrk-iso.XXXXXXXX")"
+  trap cleanup_workdir EXIT
+  cp -a "${SOURCE_DIR}/." "$WORKDIR/"
+  checkout="$WORKDIR"
+  prepare_profile "$checkout"
+  if [[ -z "${SOURCE_DATE_EPOCH:-}" ]]; then
+    local source_date_epoch
+    source_date_epoch="$(git -C "$SOURCE_DIR" show -s --format=%ct HEAD)"
+    export SOURCE_DATE_EPOCH="$source_date_epoch"
+  fi
+
+  info "building BRZRK OS ISO"
+  if [[ "$(id -u)" -eq 0 ]]; then
+    (cd "$checkout" && ./buildiso.sh -p desktop -v -w)
+  else
+    (cd "$checkout" && sudo ./buildiso.sh -p desktop -v -w)
+  fi
+  install -d "${ROOT}/out/desktop"
+  cp -a "${checkout}/out/desktop/." "${ROOT}/out/desktop/"
+  info "artifacts copied to ${ROOT}/out/desktop"
+}
+
+main "$@"

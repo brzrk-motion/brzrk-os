@@ -11,6 +11,7 @@ Recorded during the initial build mission (2026-09-04).
 5. **OpenColorIO is the ACES foundation.** Install `opencolorio` + `openimageio` + `openexr`; do not vendor proprietary ACES/LUT packs.
 6. **MIT license** for this repository’s scripts and config (see `LICENSE`). Packaged upstream software retains its own licenses.
 7. **Mouse accel flat + dark UI + fixed 4 workspaces** as first creative defaults (escape hatch: GNOME Settings / Tweaks).
+8. **Pinned upstream ISO profile.** Reuse CachyOS Live ISO boot/installer machinery at commit `4937780541814b4b0ec7c212c00fe06299f799b6`; keep BRZRK package and desktop changes in this repository.
 
 ## Assumptions
 
@@ -21,7 +22,7 @@ Recorded during the initial build mission (2026-09-04).
 
 ## Explicit non-goals (this pass)
 
-- Building or publishing an ISO.
+- Publishing an ISO release before a recorded VM boot/install test.
 - Shipping NVIDIA proprietary `.run` installers or CUDA full stacks by default (`cuda` exists in Arch but is opt-in later).
 - Wine/Steam gaming layers as product features.
 - Claiming DaVinci Resolve / Adobe / Maxon support beyond “user installs separately”.

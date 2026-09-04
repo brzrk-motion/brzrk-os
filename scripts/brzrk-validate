@@ -102,6 +102,12 @@ check_layout() {
     scripts/brzrk-validate
     scripts/brzrk-apply
     scripts/brzrk-check
+    scripts/brzrk-iso
+    iso/profiledef.sh
+    iso/live.packages
+    iso/airootfs/etc/gdm/custom.conf
+    iso/airootfs/etc/os-release
+    iso/airootfs/root/customize_airootfs.sh
   )
   local f
   info "checking repository layout"
