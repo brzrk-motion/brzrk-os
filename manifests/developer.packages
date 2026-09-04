@@ -1,0 +1,10 @@
+# BRZRK OS developer workstation layer (Arch core/extra)
+git
+nodejs
+npm
+docker
+docker-compose
+docker-buildx
+zed
+starship
+ghostty

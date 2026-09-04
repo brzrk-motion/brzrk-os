@@ -44,6 +44,7 @@ collect_packages() {
     manifests/media.packages
     manifests/color.packages
     manifests/creative.packages
+    manifests/developer.packages
     manifests/fonts.packages
   )
   if [[ -n "$WITH_GPU" ]]; then
@@ -105,6 +106,7 @@ plan_skel() {
   local home="${SUDO_USER:+$(getent passwd "$SUDO_USER" | cut -d: -f6)}"
   home="${home:-$HOME}"
   info "skel dirs under ${home}: Projects/_inbox Media/{Cache,Exports,LUTs,OCIO}"
+  info "user config: Ghostty + Starship Tokyo Night"
 }
 
 apply_skel() {
@@ -123,7 +125,15 @@ apply_skel() {
   for d in "${dirs[@]}"; do
     install -d -m 700 -o "$user" -g "$user" "$d"
   done
-  ok "skel directories created for ${user}"
+  install -d -m 700 -o "$user" -g "$user" "${home}/.config/ghostty" "${home}/.config/brzrk" "${home}/.config"
+  install -m 600 -o "$user" -g "$user" "${ROOT}/config/ghostty/config" "${home}/.config/ghostty/config"
+  install -m 600 -o "$user" -g "$user" "${ROOT}/config/starship/starship.toml" "${home}/.config/starship.toml"
+  install -m 600 -o "$user" -g "$user" "${ROOT}/config/shell/brzrk-starship.sh" "${home}/.config/brzrk/starship.sh"
+  if ! grep -Fq 'BRZRK OS Starship' "${home}/.bashrc" 2>/dev/null; then
+    printf "\n# BRZRK OS Starship\n[ -r \"\$HOME/.config/brzrk/starship.sh\" ] && . \"\$HOME/.config/brzrk/starship.sh\"\n" >>"${home}/.bashrc"
+    chown "$user:$user" "${home}/.bashrc"
+  fi
+  ok "skel directories, Tokyo Night configs, and Starship activation created for ${user}"
 }
 
 main() {

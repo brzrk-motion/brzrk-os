@@ -12,11 +12,14 @@ A package may be listed in BRZRK manifests only if:
 
 | Manifest | Sync requirement | Purpose |
 | --- | --- | --- |
-| `base`, `media`, `color`, `creative`, `fonts`, `gpu-*` | Must resolve on Arch `pacman -Si` | CI-validated workstation set |
+| `base`, `media`, `color`, `creative`, `developer`, `fonts`, `gpu-*` | Must resolve on Arch `pacman -Si` | CI-validated workstation set |
 | `cachyos.packages` | Optional unless `BRZRK_REQUIRE_CACHYOS=1` | Kernel/settings/chwd on real CachyOS |
 
 ## Install policy
 
+- **Developer layer:** Git, Node.js/npm, Docker, Docker Compose, Docker Buildx, Zed, Starship, and Ghostty are included in `developer.packages`.
+- **AI/developer applications:** Hermes Desktop, Codex CLI, and the community `chatgpt-desktop` AUR package are documented in `manifests/optional-developer.txt`; they require their own installer/authentication flows and are not silently installed by pacman.
+- **herdr:** not added because the requested name does not identify a verifiable package or tool. Confirm the intended project/package name before adding it.
 - **Core creative apps:** Blender, Krita, Kdenlive, OBS Studio, Chromium, Ghostty, GIMP, Inkscape, Darktable, Audacity, and HandBrake are included in the Arch-verified creative set.
 - **Optional third-party apps:** Spotify, Natron, and DaVinci Resolve are recorded in `manifests/optional-third-party.txt`. They are not official Arch packages on the validation host and must be installed separately only after reviewing the relevant AUR/community source, licensing, and hardware requirements. DaVinci Resolve remains proprietary and BRZRK will not redistribute its installer.
 - **Defaults:** Chromium is configured for HTTP/HTTPS/HTML; Ghostty is configured as the GNOME terminal and dock favorite.

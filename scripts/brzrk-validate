@@ -11,6 +11,7 @@ ARCH_MANIFESTS=(
   media.packages
   color.packages
   creative.packages
+  developer.packages
   fonts.packages
   gpu-common.packages
   gpu-amd.packages
@@ -94,6 +95,9 @@ check_layout() {
     docs/ROADMAP-BOOTABLE.md
     config/dconf/00-brzrk.conf
     config/dconf/profile-user
+    config/ghostty/config
+    config/starship/starship.toml
+    config/shell/brzrk-starship.sh
     config/skel/README.md
     scripts/brzrk-validate
     scripts/brzrk-apply

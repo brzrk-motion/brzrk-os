@@ -1,0 +1,13 @@
+# Optional developer applications and installers.
+# These are not Arch pacman packages in the core manifest.
+#
+# Hermes Desktop: install Hermes Agent, then run `hermes desktop`.
+# Docs: https://hermes-agent.nousresearch.com/docs/user-guide/desktop
+#
+# Codex CLI: `npm install -g @openai/codex`
+# Authenticate interactively; never commit ~/.codex/auth.json.
+#
+# ChatGPT Desktop for Arch/CachyOS: community AUR package `chatgpt-desktop`.
+# Verify the package source and OpenAI distribution terms before installing.
+#
+# herdr: unresolved package/tool name; confirm intended project before adding it.
