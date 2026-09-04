@@ -62,6 +62,20 @@ plan_dconf() {
   info "then: dconf update"
 }
 
+plan_user_defaults() {
+  info "user defaults: Chromium for http/https/html; Ghostty for terminal"
+}
+
+apply_user_defaults() {
+  local user="${SUDO_USER:-${USER}}"
+  [[ "$user" != "root" ]] || die "cannot set user defaults while targeting root; run via sudo from a user session"
+  command -v xdg-mime >/dev/null 2>&1 || die "required command not found: xdg-mime"
+  sudo -u "$user" xdg-mime default chromium.desktop x-scheme-handler/http
+  sudo -u "$user" xdg-mime default chromium.desktop x-scheme-handler/https
+  sudo -u "$user" xdg-mime default chromium.desktop text/html
+  ok "user defaults applied for ${user}"
+}
+
 apply_dconf() {
   [[ "$(id -u)" -eq 0 ]] || die "--apply for system dconf requires root"
   install -d /etc/dconf/db/local.d
@@ -135,6 +149,7 @@ main() {
   if [[ "$DO_APPLY" -eq 0 ]]; then
     info "dry-run (pass --apply to make changes)"
     plan_dconf
+    plan_user_defaults
     if [[ "$INSTALL_PACKAGES" -eq 1 ]]; then
       plan_packages
     else
@@ -151,6 +166,7 @@ main() {
   if [[ "$INSTALL_PACKAGES" -eq 1 ]]; then
     apply_packages
   fi
+  apply_user_defaults
   if [[ "$CREATE_SKEL" -eq 1 ]]; then
     apply_skel
   fi

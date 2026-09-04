@@ -17,7 +17,9 @@ A package may be listed in BRZRK manifests only if:
 
 ## Install policy
 
-- **Default recommend:** Arch-verified FOSS set via `brzrk-apply --apply --packages`.
+- **Core creative apps:** Blender, Krita, Kdenlive, OBS Studio, Chromium, Ghostty, GIMP, Inkscape, Darktable, Audacity, and HandBrake are included in the Arch-verified creative set.
+- **Optional third-party apps:** Spotify, Natron, and DaVinci Resolve are recorded in `manifests/optional-third-party.txt`. They are not official Arch packages on the validation host and must be installed separately only after reviewing the relevant AUR/community source, licensing, and hardware requirements. DaVinci Resolve remains proprietary and BRZRK will not redistribute its installer.
+- **Defaults:** Chromium is configured for HTTP/HTTPS/HTML; Ghostty is configured as the GNOME terminal and dock favorite.
 - **GPU:** choose `--gpu amd|intel|nvidia` after hardware is known; on CachyOS prefer `chwd`.
 - **Flatpak/Flathub:** enabled (`flatpak` + `gnome-software`) for apps not in repos; user-initiated.
 - **AUR (`paru`):** listed only under CachyOS optional set; BRZRK does not pin AUR PKGBUILDs in this pass.

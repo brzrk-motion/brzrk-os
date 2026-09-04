@@ -1,0 +1,9 @@
+# Optional third-party creative applications.
+# These are not part of the default Arch-verified install set.
+# Install only after reviewing source, licensing, and hardware requirements.
+#
+# AUR/community candidates (names may change):
+# spotify
+# natron
+# davinci-resolve
+# davinci-resolve-studio
