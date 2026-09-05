@@ -27,6 +27,7 @@ jobs:
           docker run --privileged --rm \
             --init \
             -e SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" \
+            -e USER=root \
             -v "${GITHUB_WORKSPACE}:/workspace" \
             -w /workspace \
             archlinux:latest \
