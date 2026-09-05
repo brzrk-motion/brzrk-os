@@ -1,0 +1,55 @@
+name: BRZRK OS ISO
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brzrk-os-iso-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-iso:
+    name: Build BRZRK OS ISO
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build and validate in privileged Arch container
+        run: |
+          mkdir -p out/desktop
+          docker run --privileged --rm \
+            --init \
+            -e SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" \
+            -v "${GITHUB_WORKSPACE}:/workspace" \
+            -w /workspace \
+            archlinux:latest \
+            bash -euo pipefail -c '
+              pacman -Sy --noconfirm --needed \
+                archiso git grub mkinitcpio-archiso sudo squashfs-tools
+              ./scripts/brzrk-check
+              ./scripts/brzrk-iso --check
+              ./scripts/brzrk-iso
+              test -n "$(find out/desktop -maxdepth 1 -type f -name "*.iso" -print -quit)"
+              test -s out/desktop/SHA256SUMS
+            '
+
+      - name: Upload ISO and build metadata
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: brzrk-os-iso-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            out/desktop/*.iso
+            out/desktop/*.txt
+            out/desktop/*.sha256
+            out/desktop/SHA256SUMS
+            out/desktop/*.log
