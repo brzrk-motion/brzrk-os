@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+install -D -m 0644 /usr/share/brzrk/profile-user /etc/dconf/profile/user
 dconf update
 
 cat > /etc/motd <<'EOF'

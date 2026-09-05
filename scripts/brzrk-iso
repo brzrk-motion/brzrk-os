@@ -148,7 +148,7 @@ prepare_profile() {
   install -D -m 0644 "${ROOT}/config/dconf/00-brzrk.conf" \
     "${profile}/airootfs/etc/dconf/db/local.d/00-brzrk"
   install -D -m 0644 "${ROOT}/config/dconf/profile-user" \
-    "${profile}/airootfs/etc/dconf/profile/user"
+    "${profile}/airootfs/usr/share/brzrk/profile-user"
   install -D -m 0644 "${ROOT}/config/ghostty/config" \
     "${profile}/airootfs/etc/skel/.config/ghostty/config"
   install -D -m 0644 "${ROOT}/config/starship/starship.toml" \
